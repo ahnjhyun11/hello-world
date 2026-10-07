@@ -1,0 +1,11 @@
+{
+  "updated": "2026-10-07T12:30:42.249Z",
+  "factors": {},
+  "ref": {},
+  "errors": [
+    "factors.8: Yahoo HG=F HTTP 403",
+    "factors.11: Yahoo KRW=X HTTP 403",
+    "ref.dxy: Yahoo DX-Y.NYB HTTP 403",
+    "factors.25: FRED WCESTUS1 HTTP 403"
+  ]
+}

@@ -17,5 +17,12 @@
 - `UMBRELLA-V8-2-Bots.csv` — 스캔/리포트/알람 봇 스케줄
 
 ## 현재 한계
-- `fetchAll()`은 실제 API를 호출하지 않고 샘플 데이터를 다시 그립니다 (Yahoo/FRED/LME 연동 전).
-- 35개 중 26개는 `데이터 미연동` 상태로 표시됩니다.
+- 35개 중 LIVE는 3개뿐이고 나머지는 샘플 또는 `데이터 미연동`입니다.
+
+## 실데이터 연동 (v8.2)
+- `fetch-data.mjs` (Node 18+, 의존성 없음): Yahoo Finance·FRED에서 수집해 1년 평균/표준편차로 Z-Score 계산 → `data/factors.json`
+  - LIVE 3개: 구리(HG=F), 원/달러(KRW=X), 미국 원유 재고(FRED WCESTUS1) + DXY 참고값
+  - D램·CoWoS·AI서버·폴란드·호르무즈·칠레 파업·비트코인 반감기 등은 무료 API가 없어 **샘플 유지** (🟢 표시 없음)
+- 브라우저는 Yahoo/FRED CORS가 막혀 있어 대시보드는 같은 출처의 `data/factors.json`만 읽습니다. 실패하면 샘플로 폴백합니다.
+- `.github/workflows/umbrella-data.yml`: 4시간마다 수집 후 `factors.json` 커밋 (기본 브랜치에 병합돼야 스케줄 동작)
+- 로컬 실행: `node umbrella/fetch-data.mjs && python3 -m http.server -d umbrella`
