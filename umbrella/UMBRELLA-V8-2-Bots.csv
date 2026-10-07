@@ -1,0 +1,4 @@
+﻿ID,제목,주기,다음실행,상태,프롬프트요약,버전
+01a11074-e780-74f6-9585-9d8310d73b37,UMBRELLA v8 Real Data Engine 35개 실시간,4시간마다,2026-10-07 23:00 KST,scheduled,"35개 팩터 실시간 Z-score 계산, Gmail+텔레그램 [UMBRELLA TRIGGER GLOBAL v8 REAL]",Real Data Engine v8.2 + Telegram
+01a113a2-d9ba-7432-ba07-0fac3543d317,UMBRELLA 주간 리포트 GLOBAL 16종목,매주 월요일 8시,2026-10-19 08:00 KST,scheduled,16종목 TERRA 점수 + 한미 헤지,Global 16종목
+01a106d2-7e93-7072-9b2c-04042d5e7472,AEGIS + 저점매수 알람,"매일 8시,20시",2026-10-07 20:00 KST,scheduled,"BTC BUY 4/4, USD/JPY 저점",

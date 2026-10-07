@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UMBRELLA v6 - Factor Manager 40</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body{background:#0a0e1a;color:#e2e8f0;font-family:Pretendard,monospace}
+.card{background:#111827;border:1px solid #1f2937}
+.active-row{border-left:3px solid #10b981}
+.trigger-row{border-left:3px solid #ef4444;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}
+input,select,textarea{background:#1f2937;border:1px solid #374151;color:#e2e8f0}
+</style>
+</head>
+<body class="p-4">
+<div class="max-w-7xl mx-auto">
+<h1 class="text-2xl font-bold text-cyan-400">⚙️ Factor Manager v6 - 40개 팩터 조정</h1>
+<p class="text-xs text-gray-400 mb-3">ON/OFF, 3σ 슬라이더, 영향종목 편집 → 저장 → 봇에 적용 → 다음 4시간 스캔부터 반영</p>
+<div class="flex flex-wrap gap-2 mb-3">
+<input id="search" placeholder="검색: 구리, 호르무즈" class="px-3 py-2 rounded w-56 text-sm">
+<button onclick="filterType('all')" class="px-3 py-1 bg-gray-700 rounded text-xs">전체 40</button>
+<button onclick="filterType('kr')" class="px-3 py-1 bg-blue-900 rounded text-xs">한국 20</button>
+<button onclick="filterType('us')" class="px-3 py-1 bg-red-900 rounded text-xs">미국 20</button>
+<button onclick="filterType('active')" class="px-3 py-1 bg-green-900 rounded text-xs">활성만</button>
+<button onclick="filterType('trigger')" class="px-3 py-1 bg-red-700 rounded text-xs">트리거 6</button>
+<button onclick="addFactor()" class="px-3 py-1 bg-cyan-600 rounded text-xs font-bold">+추가</button>
+<button onclick="saveAll()" class="px-3 py-1 bg-emerald-600 rounded text-xs font-bold">💾저장</button>
+<button onclick="applyToBot()" class="px-4 py-1 bg-yellow-500 text-black rounded text-xs font-bold">🤖봇에 적용</button>
+<button onclick="resetAll()" class="px-2 py-1 bg-gray-600 rounded text-xs">초기화</button>
+</div>
+<div class="text-xs mb-2">활성: <span id="ac" class="text-green-400 font-bold">40</span>/40 | 트리거: <span id="tc" class="text-red-400 font-bold">6</span> | 다음스캔: 19:00 KST | ID: 01a11074-e780-74f6-9585-9d8310d73b37</div>
+<div class="overflow-auto max-h-[55vh] border border-gray-800 rounded">
+<table class="w-full text-[11px]"><thead class="sticky top-0 bg-gray-900"><tr><th class="p-1">No</th><th>ON</th><th>지역</th><th>파동</th><th>팩터명</th><th>현재값</th><th>3σ</th><th>영향종목</th><th>액션</th><th>편집</th></tr></thead><tbody id="tb"></tbody></table>
+</div>
+<div class="mt-3 grid md:grid-cols-2 gap-3">
+<div><h3 class="text-xs font-bold mb-1">📤 JSON (봇 적용용)</h3><textarea id="ja" class="w-full h-36 p-2 rounded text-[10px]"></textarea><div class="flex gap-2 mt-1"><button onclick="exportJSON()" class="px-2 py-1 bg-gray-700 rounded text-xs">복사</button><button onclick="importJSON()" class="px-2 py-1 bg-gray-700 rounded text-xs">붙여넣기 적용</button></div></div>
+<div class="card p-2 rounded text-[11px] text-gray-400"><b>사용법</b><br>• 체크 OFF = 스캔 제외<br>• 슬라이더 2.0 민감, 4.0 둔감<br>• 영향종목 쉼표 구분: 009540,FCX,NVDA<br>• 저장=localStorage, 봇에 적용=다음 스캔 반영<br>• 트리거 6개: 호르무즈, 폴란드국방, CoWoS, 텍사스원유, 미 국방예산, AI서버</div>
+</div>
+</div>
+<script>
+const defaults=[
+{id:1,active:true,region:'kr',wave:'원자재',name:'브라질 미나스 강수량',value:'1240mm 정상',sigma:3,stocks:'005930,009540,005380',action:'BUY',trigger:false},
+{id:2,active:true,region:'kr',wave:'기술',name:'대만 가뭄 저수율',value:'65% 정상',sigma:3,stocks:'005930,000660,042700',action:'BUY',trigger:false},
+{id:3,active:true,region:'kr',wave:'위기',name:'호르무즈 긴장지수',value:'7.2/10 높음',sigma:3,stocks:'009540,012450,XOM,LMT',action:'BUY',trigger:true},
+{id:4,active:true,region:'kr',wave:'위기',name:'파나마 운하 수위',value:'44ft 낮음',sigma:3,stocks:'011200,005380,AMZN',action:'BUY',trigger:false},
+{id:5,active:true,region:'kr',wave:'원자재',name:'후판 가격',value:'$720 안정',sigma:3,stocks:'009540',action:'BUY',trigger:false},
+{id:6,active:true,region:'kr',wave:'원자재',name:'리튬 가격',value:'$12k 반등',sigma:3,stocks:'005490,FCX',action:'BUY',trigger:false},
+{id:7,active:true,region:'kr',wave:'기술',name:'네온가스/실리콘',value:'정상',sigma:3,stocks:'005930,000660',action:'HOLD',trigger:false},
+{id:8,active:true,region:'kr',wave:'원자재',name:'구리 가격',value:'$9800 강세',sigma:3,stocks:'010120,FCX',action:'BUY',trigger:false},
+{id:9,active:true,region:'kr',wave:'원자재',name:'철광석 가격',value:'$110 안정',sigma:3,stocks:'005490',action:'BUY',trigger:false},
+{id:10,active:true,region:'kr',wave:'통화',name:'달러인덱스 DXY',value:'105.3 높음',sigma:3,stocks:'005930,005380,AAPL',action:'BUY',trigger:false},
+{id:11,active:true,region:'kr',wave:'통화',name:'원/달러',value:'1385원',sigma:3,stocks:'005930,000660',action:'BUY',trigger:false},
+{id:12,active:true,region:'kr',wave:'경기',name:'Clarkson 신조선가',value:'189p 최고',sigma:3,stocks:'009540',action:'BUY',trigger:false},
+{id:13,active:true,region:'kr',wave:'경기',name:'LNG선 운임',value:'$120k 강세',sigma:3,stocks:'009540',action:'BUY',trigger:false},
+{id:14,active:true,region:'kr',wave:'경기',name:'D램 현물가',value:'$2.1 반등',sigma:3,stocks:'005930,000660',action:'BUY',trigger:false},
+{id:15,active:true,region:'kr',wave:'정책',name:'폴란드 국방예산',value:'$35B 확정',sigma:3,stocks:'012450,LMT',action:'BUY',trigger:true},
+{id:16,active:true,region:'kr',wave:'정책',name:'중국 전력난',value:'정상',sigma:3,stocks:'010120,005490',action:'HOLD',trigger:false},
+{id:17,active:true,region:'kr',wave:'시즈널',name:'미나스 커피/대두',value:'정상',sigma:3,stocks:'097950,004370',action:'HOLD',trigger:false},
+{id:18,active:true,region:'kr',wave:'시즈널',name:'말레이시아 팜유',value:'정상',sigma:3,stocks:'004370,097950',action:'HOLD',trigger:false},
+{id:19,active:true,region:'kr',wave:'경기',name:'ISM 제조업',value:'51.2 확장',sigma:3,stocks:'000660,CAT',action:'BUY',trigger:false},
+{id:20,active:true,region:'kr',wave:'금리',name:'미 10년물 금리',value:'4.3% 동결',sigma:3,stocks:'105560,JPM',action:'HOLD',trigger:false},
+{id:21,active:true,region:'us',wave:'원자재',name:'칠레 구리 파업',value:'정상',sigma:3,stocks:'FCX',action:'BUY',trigger:false},
+{id:22,active:true,region:'us',wave:'원자재',name:'칠레 리튬 가뭄',value:'정상',sigma:3,stocks:'AAPL,FCX',action:'HOLD',trigger:false},
+{id:23,active:true,region:'us',wave:'경기',name:'미시시피강 수위',value:'정상',sigma:3,stocks:'CAT',action:'HOLD',trigger:false},
+{id:24,active:true,region:'us',wave:'기술',name:'TSMC CoWoS 가동률',value:'100% 풀가동',sigma:3,stocks:'NVDA,042700',action:'BUY',trigger:true},
+{id:25,active:true,region:'us',wave:'위기',name:'텍사스 원유 재고',value:'-3% 감소',sigma:3,stocks:'XOM',action:'BUY',trigger:true},
+{id:26,active:true,region:'us',wave:'정책',name:'미 국방예산안',value:'$886B 통과',sigma:3,stocks:'LMT',action:'BUY',trigger:true},
+{id:27,active:true,region:'us',wave:'정책',name:'IRA 보조금',value:'지속',sigma:3,stocks:'FCX',action:'BUY',trigger:false},
+{id:28,active:true,region:'us',wave:'정책',name:'CHIPS 반도체법',value:'지속',sigma:3,stocks:'NVDA',action:'BUY',trigger:false},
+{id:29,active:true,region:'us',wave:'정책',name:'대중국 관세',value:'정상',sigma:3,stocks:'AAPL',action:'HOLD',trigger:false},
+{id:30,active:true,region:'us',wave:'경기',name:'CPI/고용',value:'정상',sigma:3,stocks:'JPM,NVDA',action:'HOLD',trigger:false},
+{id:31,active:true,region:'us',wave:'기술',name:'AI서버 발주',value:'+40% 급증',sigma:3,stocks:'NVDA,CAT',action:'BUY',trigger:true},
+{id:32,active:true,region:'us',wave:'경기',name:'아이폰 판매',value:'정상',sigma:3,stocks:'AAPL,000660',action:'HOLD',trigger:false},
+{id:33,active:true,region:'us',wave:'시즈널',name:'AWS 클라우드',value:'+18% 성장',sigma:3,stocks:'AMZN',action:'BUY',trigger:false},
+{id:34,active:true,region:'us',wave:'시즈널',name:'블랙프라이데이',value:'대기',sigma:3,stocks:'AMZN,259960',action:'BUY',trigger:false},
+{id:35,active:true,region:'us',wave:'경기',name:'중서부 가뭄',value:'정상',sigma:3,stocks:'CAT',action:'HOLD',trigger:false},
+{id:36,active:true,region:'us',wave:'원자재',name:'네바다 리튬 허가',value:'대기',sigma:3,stocks:'FCX',action:'BUY',trigger:false},
+{id:37,active:true,region:'us',wave:'위기',name:'LNG 터미널 가동',value:'95% 높음',sigma:3,stocks:'XOM',action:'BUY',trigger:false},
+{id:38,active:true,region:'us',wave:'위기',name:'항만 노조 파업',value:'정상',sigma:3,stocks:'AAPL,AMZN',action:'HOLD',trigger:false},
+{id:39,active:true,region:'us',wave:'기술',name:'비트코인 반감기',value:'영향',sigma:3,stocks:'NVDA',action:'BUY',trigger:false},
+{id:40,active:true,region:'us',wave:'원자재',name:'전기차 판매',value:'+25% 성장',sigma:3,stocks:'FCX',action:'BUY',trigger:false},
+];
+let factors = JSON.parse(localStorage.getItem('umbrella_factors_v6')||'null')||JSON.parse(JSON.stringify(defaults));
+let curFilter='all', curSearch='';
+function render(){
+  const tb=document.getElementById('tb'); tb.innerHTML='';
+  let f=factors;
+  if(curFilter==='kr') f=f.filter(x=>x.region==='kr');
+  if(curFilter==='us') f=f.filter(x=>x.region==='us');
+  if(curFilter==='active') f=f.filter(x=>x.active);
+  if(curFilter==='trigger') f=f.filter(x=>x.trigger);
+  if(curSearch) f=f.filter(x=>x.name.includes(curSearch));
+  f.forEach(x=>{
+    const tr=document.createElement('tr');
+    tr.className=(x.trigger?'trigger-row ':'')+(x.active?'active-row ':'')+' border-b border-gray-800 hover:bg-gray-800';
+    tr.innerHTML=`<td class="p-1 text-center">${x.id}</td><td class="p-1 text-center"><input type="checkbox" ${x.active?'checked':''} onchange="tog(${x.id})"></td><td class="p-1 text-center">${x.region.toUpperCase()}</td><td class="p-1"><select onchange="upd(${x.id},'wave',this.value)" class="text-[10px] p-1 rounded"><option ${x.wave==='원자재'?'selected':''}>원자재</option><option ${x.wave==='금리'?'selected':''}>금리</option><option ${x.wave==='통화'?'selected':''}>통화</option><option ${x.wave==='경기'?'selected':''}>경기</option><option ${x.wave==='정책'?'selected':''}>정책</option><option ${x.wave==='위기'?'selected':''}>위기</option><option ${x.wave==='기술'?'selected':''}>기술</option><option ${x.wave==='시즈널'?'selected':''}>시즈널</option></select></td><td class="p-1"><input value="${x.name}" onchange="upd(${x.id},'name',this.value)" class="w-28 p-1 rounded text-[10px]"></td><td class="p-1 text-[10px] ${x.trigger?'text-red-400 font-bold':''}">${x.value}</td><td class="p-1"><input type="range" min="2" max="4" step="0.1" value="${x.sigma}" oninput="upd(${x.id},'sigma',this.value);this.nextElementSibling.innerText=this.value+'σ'" class="w-12"><span class="text-[10px]">${x.sigma}σ</span></td><td class="p-1"><input value="${x.stocks}" onchange="upd(${x.id},'stocks',this.value)" class="w-24 p-1 rounded text-[10px]"></td><td class="p-1"><select onchange="upd(${x.id},'action',this.value)" class="text-[10px] p-1 rounded"><option ${x.action==='BUY'?'selected':''}>BUY</option><option ${x.action==='SELL'?'selected':''}>SELL</option><option ${x.action==='HOLD'?'selected':''}>HOLD</option></select></td><td class="p-1"><button onclick="del(${x.id})" class="px-1 py-0.5 bg-red-900 rounded text-[10px]">삭제</button></td>`;
+    tb.appendChild(tr);
+  });
+  document.getElementById('ac').innerText=factors.filter(x=>x.active).length;
+  document.getElementById('tc').innerText=factors.filter(x=>x.trigger).length;
+  document.getElementById('ja').value=JSON.stringify(factors,null,2);
+  localStorage.setItem('umbrella_factors_v6',JSON.stringify(factors));
+}
+function tog(id){const f=factors.find(x=>x.id===id);f.active=!f.active;render();}
+function upd(id,field,val){const f=factors.find(x=>x.id===id);f[field]=field==='sigma'?parseFloat(val):val;localStorage.setItem('umbrella_factors_v6',JSON.stringify(factors));document.getElementById('ja').value=JSON.stringify(factors,null,2);}
+function filterType(t){curFilter=t;render();}
+document.getElementById('search').addEventListener('input',e=>{curSearch=e.target.value;render();});
+function addFactor(){const nid=Math.max(...factors.map(f=>f.id))+1;factors.push({id:nid,active:true,region:'kr',wave:'원자재',name:'신규 팩터',value:'정상',sigma:3,stocks:'005930',action:'BUY',trigger:false});render();}
+function del(id){if(confirm('삭제?')){factors=factors.filter(f=>f.id!==id);render();}}
+function saveAll(){localStorage.setItem('umbrella_factors_v6',JSON.stringify(factors));alert('저장됨');}
+function exportJSON(){navigator.clipboard.writeText(JSON.stringify(factors,null,2));alert('복사됨');}
+function importJSON(){try{factors=JSON.parse(document.getElementById('ja').value);render();alert('적용됨');}catch(e){alert('오류:'+e.message);}}
+function resetAll(){if(confirm('40개 초기화?')){localStorage.removeItem('umbrella_factors_v6');factors=JSON.parse(JSON.stringify(defaults));render();}}
+function applyToBot(){
+  const json=JSON.stringify(factors,null,2);
+  const active=factors.filter(f=>f.active).length;
+  const prompt=`Factor Manager에서 저장한 JSON을 봇에 적용:
+
+봇 ID: 01a11074-e780-74f6-9585-9d8310d73b37
+활성 ${active}개
+
+이 JSON으로 봇 프롬프트를 업데이트해줘. 다음 스캔부터 적용.
+
+${json}`;
+  // Copy to clipboard and show instruction
+  navigator.clipboard.writeText(prompt);
+  alert('🤖 봇 적용 준비\n\n클립보드에 복사됨! 이제 Meta AI 채팅에 붙여넣으면 내가 봇을 업데이트한다.\n\n활성 '+active+'개 팩터\n다음 스캔 19:00 KST부터 반영');
+}
+render();
+</script>
+</body>
+</html>
