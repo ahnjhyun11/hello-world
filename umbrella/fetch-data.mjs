@@ -5,6 +5,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { notify } from './notify.mjs';
 
 const UA = { 'User-Agent': 'Mozilla/5.0 (UMBRELLA-v8.2)' };
 const LB_PER_TONNE = 2204.62;
@@ -82,4 +83,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   console.log(`factors ${Object.keys(out.factors).length}/${Object.keys(jobs).length}, errors ${out.errors.length}`);
   out.errors.forEach(e => console.error(' -', e));
   if (!Object.keys(out.factors).length) process.exit(1);
+  await notify(out);
 }

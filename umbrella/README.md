@@ -26,3 +26,10 @@
 - 브라우저는 Yahoo/FRED CORS가 막혀 있어 대시보드는 같은 출처의 `data/factors.json`만 읽습니다. 실패하면 샘플로 폴백합니다.
 - `.github/workflows/umbrella-data.yml`: 4시간마다 수집 후 `factors.json` 커밋 (기본 브랜치에 병합돼야 스케줄 동작)
 - 로컬 실행: `node umbrella/fetch-data.mjs && python3 -m http.server -d umbrella`
+
+## 텔레그램 알림 (서버 측)
+- `notify.mjs`: `fetch-data.mjs` 실행 끝에 호출됩니다. **새로 TRIGGER가 된 LIVE 팩터만** 발송하고, 해제 전까지 재발송하지 않습니다 (`data/alert-state.json`). 발송 실패는 다음 스캔에서 재시도합니다.
+- 설정: 저장소 Settings → Secrets and variables → Actions에 `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` 등록. 토큰은 코드/로그/커밋에 남지 않습니다.
+- 로컬 테스트: `TELEGRAM_BOT_TOKEN=... TELEGRAM_CHAT_ID=... node umbrella/fetch-data.mjs` (토큰이 없으면 메시지만 출력하고 보내지 않음)
+- 샘플 값(D램, AI서버 등)은 알림 대상이 아닙니다. LIVE 팩터가 늘어나면 자동으로 포함됩니다.
+- 대시보드의 토큰 입력칸은 브라우저 테스트용이며 4시간 스캔과는 별개입니다.
