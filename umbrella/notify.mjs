@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const DIR = dirname(fileURLToPath(import.meta.url));
-const V8_KELLY = { 8: 8, 25: 9 };  // 대시보드 v8.2에서 쓰는 Kelly (그 외는 백테스트 CSV)
+const V8_KELLY = { 8: 8, 14: 12, 25: 9, 31: 18 };  // 대시보드 v8.2에서 쓰는 Kelly (그 외는 백테스트 CSV)
 
 function splitCsv(line) {
   const out = []; let cur = '', q = false;

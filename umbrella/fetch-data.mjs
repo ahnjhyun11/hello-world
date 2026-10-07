@@ -6,6 +6,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { notify } from './notify.mjs';
+import { applyManual, loadManual } from './manual.mjs';
 
 const UA = { 'User-Agent': 'Mozilla/5.0 (UMBRELLA-v8.2)' };
 const LB_PER_TONNE = 2204.62;
@@ -94,11 +95,12 @@ export async function collect(fetchFn = fetch) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const out = await collect();
+  applyManual(out, loadManual());  // 수동 입력 값이 자동 수집 값보다 우선
+  console.log(`factors ${Object.keys(out.factors).length}/${Object.keys(jobs).length}(자동)+수동, errors ${out.errors.length}`);
+  out.errors.forEach(e => console.error(' -', e));
+  if (!Object.keys(out.factors).length) process.exit(1);  // 전부 실패하면 기존 factors.json을 덮어쓰지 않는다
   const dir = join(dirname(fileURLToPath(import.meta.url)), 'data');
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'factors.json'), JSON.stringify(out, null, 2) + '\n');
-  console.log(`factors ${Object.keys(out.factors).length}/${Object.keys(jobs).length}, errors ${out.errors.length}`);
-  out.errors.forEach(e => console.error(' -', e));
-  if (!Object.keys(out.factors).length) process.exit(1);
   await notify(out);
 }

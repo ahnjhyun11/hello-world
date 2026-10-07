@@ -23,7 +23,7 @@
 <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6" id="topCards"></div>
 
 <div class="grid md:grid-cols-2 gap-4 mb-6">
-<div class="card p-3 rounded"><h3 class="font-bold mb-2">📡 팩터 35개 Z-Score (🟢 실데이터 · 🟡 프록시)</h3><div class="overflow-auto max-h-[50vh]"><table class="w-full text-[11px]"><thead class="sticky top-0 bg-gray-900"><tr><th>No</th><th>팩터명</th><th>현재값 (Real)</th><th>1년평균</th><th>Z-Score</th><th>상태</th><th>영향</th></tr></thead><tbody id="realTable"></tbody></table></div></div>
+<div class="card p-3 rounded"><h3 class="font-bold mb-2">📡 팩터 35개 Z-Score (🟢 실데이터 · 🟡 프록시 · 🔵 수동)</h3><div class="overflow-auto max-h-[50vh]"><table class="w-full text-[11px]"><thead class="sticky top-0 bg-gray-900"><tr><th>No</th><th>팩터명</th><th>현재값 (Real)</th><th>1년평균</th><th>Z-Score</th><th>상태</th><th>영향</th></tr></thead><tbody id="realTable"></tbody></table></div></div>
 <div class="card p-3 rounded"><h3 class="font-bold mb-2">🚨 현재 트리거 (3σ 이상)</h3><div id="triggerList" class="space-y-2 text-xs"></div><div class="mt-4"><h4 class="font-bold text-xs mb-1">📈 D램 + 구리 실시간 차트</h4><canvas id="chart" height="200"></canvas></div></div>
 </div>
 
@@ -127,6 +127,25 @@ async function getChatId(){
 setTimeout(loadTG, 500);
 </script>
 
+<div class="card p-3 rounded mt-4 border border-blue-800">
+<h3 class="font-bold mb-2 text-blue-400">✍️ 수동 입력 🔵 — 무료 API가 없는 팩터(D램 현물가, AI서버 발주 등)</h3>
+<div class="grid grid-cols-2 md:grid-cols-6 gap-2 text-[11px]">
+<select id="mf_id" class="p-2 rounded col-span-2"></select>
+<input id="mf_value" placeholder="현재값 숫자 (57.86)" class="p-2 rounded">
+<input id="mf_avg" placeholder="1년평균 (28)" class="p-2 rounded">
+<input id="mf_std" placeholder="표준편차 (8.5)" class="p-2 rounded">
+<input id="mf_z" placeholder="또는 Z 직접 (3.5)" class="p-2 rounded">
+<input id="mf_prefix" placeholder="앞 기호 ($)" class="p-2 rounded">
+<input id="mf_suffix" placeholder="뒤 기호 (%)" class="p-2 rounded">
+<input id="mf_current" placeholder="표시 문자열 (선택, +40% 급증)" class="p-2 rounded col-span-2">
+<input id="mf_avgtext" placeholder="평균 표시 (선택)" class="p-2 rounded">
+<input id="mf_note" placeholder="출처 메모 (DRAMeXchange)" class="p-2 rounded col-span-2">
+</div>
+<div class="flex gap-2 mt-2"><button onclick="manualSubmit()" class="px-3 py-1 bg-blue-600 rounded text-xs">적용 + JSON 생성</button><button onclick="manualClear()" class="px-3 py-1 bg-gray-600 rounded text-xs">로컬 값 삭제</button><span id="mf_msg" class="text-[11px] text-gray-400 py-1"></span></div>
+<textarea id="mf_json" class="w-full h-24 p-2 rounded text-[10px] mt-2 bg-black text-green-400" placeholder="data/manual.json 에 넣을 JSON" readonly></textarea>
+<div class="text-[10px] text-gray-500 mt-1">같은 값을 CLI로: <code>node umbrella/manual.mjs set 14 --value 57.86 --avg 28 --std 8.5 --prefix '$' --note DRAMeXchange</code> · 7일이 지나면 자동 무시됩니다.</div>
+</div>
+
 <div class="card p-3 rounded">
 <h3 class="font-bold mb-2">🔧 Real Data Engine API 목록</h3>
 <div class="grid md:grid-cols-3 gap-2 text-[11px] text-gray-400">
@@ -188,14 +207,46 @@ async function loadLive(){
   const res = await fetch('data/factors.json?t=' + Date.now(), {cache:'no-store'});
   if(!res.ok) throw new Error('data/factors.json HTTP ' + res.status);
   const d = await res.json();
-  allFactors.forEach(f=>{ delete f.live; delete f.proxy; });
+  allFactors.forEach(f=>{ delete f.live; delete f.proxy; delete f.manual; });
   Object.entries(d.factors||{}).forEach(([id,v])=>{
     const f = allFactors.find(x=>x.id===+id);
-    if(f) Object.assign(f, {current:v.current, avg:v.avg, z:v.z, status:v.status, source:v.source, live:true, proxy:!!v.proxy});
+    if(f) Object.assign(f, {current:v.current, avg:v.avg, z:v.z, status:v.status, source:v.source, live:true, proxy:!!v.proxy, manual:!!v.manual});
   });
   liveRef = d.ref||{};
+  applyLocalManual();
   return d;
 }
+
+// ---- 수동 입력 (브라우저 미리보기). 영구 반영은 data/manual.json 또는 manual.mjs 사용 ----
+const LS_KEY = 'umbrella_manual_local';
+function statusOfZ(z){ return Math.abs(z)>=3 ? 'TRIGGER' : Math.abs(z)>=1.5 ? '주의 '+(z>0?'+':'')+z.toFixed(1)+'σ' : '정상'; }
+function readLocal(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||'{}'); }catch(e){ return {}; } }
+function applyLocalManual(){
+  const m = readLocal();
+  Object.entries(m).forEach(([id,v])=>{
+    const f = allFactors.find(x=>x.id===+id);
+    if(f) Object.assign(f, {current:v.current, avg:v.avg, z:v.z, status:statusOfZ(v.z), source:'수동 입력(이 브라우저) '+v.asOf.slice(0,10)+(v.note?' · '+v.note:''), live:true, proxy:false, manual:true});
+  });
+}
+function manualSubmit(){
+  const g = k=>document.getElementById('mf_'+k).value.trim();
+  const id = +g('id'), value = parseFloat(g('value')), avg = parseFloat(g('avg')), std = parseFloat(g('std'));
+  let z = g('z')===''? NaN : parseFloat(g('z'));
+  const msg = document.getElementById('mf_msg');
+  if(!isFinite(z)){
+    if(!isFinite(value)||!isFinite(avg)||!(std>0)){ msg.textContent='⚠️ 현재값·1년평균·표준편차를 모두 입력하거나 Z-Score를 직접 입력하세요'; return; }
+    z = (value-avg)/std;
+  }
+  const cur = g('current') || (isFinite(value) ? g('prefix')+value+g('suffix') : '');
+  if(!cur){ msg.textContent='⚠️ 현재값(표시 문자열)이 필요합니다'; return; }
+  const entry = {current:cur, avg: g('avgtext') || (isFinite(avg)? g('prefix')+avg+g('suffix')+' 1Y':'-'), z:+z.toFixed(2), note:g('note'), asOf:new Date().toISOString(), ttlDays:7};
+  const m = readLocal(); m[id]=entry;
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(m)); }catch(e){}
+  applyLocalManual(); render();
+  document.getElementById('mf_json').value = JSON.stringify({[id]:entry}, null, 2);
+  msg.textContent = '✅ 이 브라우저에 적용됨 (Z '+entry.z+'). 알림·4시간 스캔에 반영하려면 아래 JSON을 data/manual.json의 "factors"에 넣어 커밋하세요.';
+}
+function manualClear(){ try{ localStorage.removeItem(LS_KEY); }catch(e){} fetchAll(); document.getElementById('mf_msg').textContent='로컬 수동 값 삭제됨'; }
 
 function render(){
   const tb = document.getElementById('realTable');
@@ -225,7 +276,7 @@ function render(){
   allFactors.forEach(f=>{
     const tr=document.createElement('tr');
     tr.className=(f.status.includes('TRIGGER')?'trigger ':'normal ') + ' border-b border-gray-800';
-    tr.innerHTML=`<td class="p-1 text-center">${f.id}</td><td class="p-1">${f.name}</td><td class="p-1 font-bold">${f.current}</td><td class="p-1">${f.avg}</td><td class="p-1 ${(f.z!==null&&Math.abs(f.z)>=3)?'text-red-400 font-bold':(f.z!==null&&Math.abs(f.z)>=1.5)?'text-yellow-400':''}">${f.z===null?'-':f.z+'σ'}</td><td class="p-1">${f.live?(f.proxy?'🟡 ':'🟢 '):''}${f.status}</td><td class="p-1 text-[10px]">${f.stocks} Kelly ${f.kelly}</td>`;
+    tr.innerHTML=`<td class="p-1 text-center">${f.id}</td><td class="p-1">${f.name}</td><td class="p-1 font-bold">${f.current}</td><td class="p-1">${f.avg}</td><td class="p-1 ${(f.z!==null&&Math.abs(f.z)>=3)?'text-red-400 font-bold':(f.z!==null&&Math.abs(f.z)>=1.5)?'text-yellow-400':''}">${f.z===null?'-':f.z+'σ'}</td><td class="p-1">${f.manual?'🔵 ':f.live?(f.proxy?'🟡 ':'🟢 '):''}${f.status}</td><td class="p-1 text-[10px]">${f.stocks} Kelly ${f.kelly}</td>`;
     tb.appendChild(tr);
   });
 
@@ -259,6 +310,7 @@ async function fetchAll(){
 }
 
 // Initial
+(function(){ const sel=document.getElementById('mf_id'); allFactors.forEach(f=>{ const o=document.createElement('option'); o.value=f.id; o.textContent=f.id+' '+f.name+(f.live?'':' (샘플)'); sel.appendChild(o); }); const d=allFactors.find(f=>f.id===14); if(d) sel.value=14; })();
 render();
 fetchAll();
 

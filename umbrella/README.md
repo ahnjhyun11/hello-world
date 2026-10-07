@@ -41,3 +41,18 @@ D램 현물가(DRAMeXchange)와 AI서버 발주(Dell/Supermicro 실적)는 무�
 - Z-Score는 1년 평균/표준편차 기준. 현물가·발주량이 아니라 **주가 모멘텀**이라 원 팩터의 백테스트 통계(승률 66%/79%)는 이 프록시에 그대로 적용되지 않습니다.
 - 대시보드에는 🟡로 표시되고, **텔레그램 알림은 기본 제외**입니다. 포함하려면 `UMBRELLA_ALERT_PROXY=1`을 설정하세요.
 - 수집 실패 시 기존 샘플 값으로 폴백합니다. 진짜 현물가가 필요하면 TrendForce/DRAMeXchange 유료 데이터 또는 별도 소스가 필요합니다.
+
+## 수동 입력 (🔵)
+무료 API가 없는 팩터(D램 현물가, AI서버 발주 등)는 직접 확인한 값을 넣을 수 있습니다. **수동 값이 자동 수집·프록시 값보다 우선**합니다.
+- CLI (`data/manual.json`에 저장 → 4시간 스캔·텔레그램 알림에 반영):
+  ```
+  node umbrella/manual.mjs set 14 --value 57.86 --avg 28 --std 8.5 --prefix '$' --note 'DRAMeXchange DDR5 16Gb'
+  node umbrella/manual.mjs set 31 --current '+40% 급증' --avg '+15%' --z 3.8 --note 'Dell/SMCI 실적'
+  node umbrella/manual.mjs list   # 목록
+  node umbrella/manual.mjs rm 14  # 삭제
+  ```
+  Z-Score는 `(값-평균)/표준편차`로 계산하거나 `--z`로 직접 줍니다. 입력 후 `data/manual.json`을 커밋·푸시하면 다음 스캔부터 반영됩니다.
+- **만료**: 입력 후 7일(`--ttl N`으로 변경)이 지나면 무시되고 자동 수집/샘플로 돌아갑니다. 낡은 값이 TRIGGER로 남는 것을 막기 위해서입니다.
+- 대시보드의 "✍️ 수동 입력" 폼은 **이 브라우저에서만** 미리 적용(localStorage)하며, 생성된 JSON을 `data/manual.json`의 `"factors"`에 넣어야 알림에 반영됩니다.
+- 백테스트 C급 OFF 팩터(DXY, 10년물, CPI, 커피/대두, 팜유)는 입력할 수 없습니다.
+- 수동 값은 사람이 확인한 값이라 프록시와 달리 텔레그램 알림 대상입니다.
