@@ -12,7 +12,7 @@
 <body class="p-4">
 <div class="max-w-7xl mx-auto">
 <h1 class="text-2xl font-bold text-cyan-400">🔴 UMBRELLA v8.2 Real Data Engine + Telegram - 진짜 API 연동</h1>
-<p class="text-xs text-gray-400 mb-3">Yahoo Finance + FRED + LME + EIA + TrendForce 실시간 | 4시간마다 자동 갱신 | 백테스트 검증 35개 팩터</p>
+<p class="text-xs text-gray-400 mb-3">Yahoo Finance + FRED + LME + EIA + TrendForce 실시간 | 4시간마다 자동 갱신 | 백테스트 검증 35개 팩터 (C급 5개 OFF)</p>
 
 <div class="flex gap-2 mb-4">
 <button onclick="fetchAll()" class="px-4 py-2 bg-cyan-600 rounded font-bold">🔄 실시간 전체 갱신</button>
@@ -23,7 +23,7 @@
 <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6" id="topCards"></div>
 
 <div class="grid md:grid-cols-2 gap-4 mb-6">
-<div class="card p-3 rounded"><h3 class="font-bold mb-2">📡 실시간 팩터 35개 Z-Score</h3><div class="overflow-auto max-h-[50vh]"><table class="w-full text-[11px]"><thead class="sticky top-0 bg-gray-900"><tr><th>No</th><th>팩터명</th><th>현재값 (Real)</th><th>1년평균</th><th>Z-Score</th><th>상태</th><th>영향</th></tr></thead><tbody id="realTable"></tbody></table></div></div>
+<div class="card p-3 rounded"><h3 class="font-bold mb-2">📡 팩터 35개 Z-Score (실연동 9 / 미연동 26)</h3><div class="overflow-auto max-h-[50vh]"><table class="w-full text-[11px]"><thead class="sticky top-0 bg-gray-900"><tr><th>No</th><th>팩터명</th><th>현재값 (Real)</th><th>1년평균</th><th>Z-Score</th><th>상태</th><th>영향</th></tr></thead><tbody id="realTable"></tbody></table></div></div>
 <div class="card p-3 rounded"><h3 class="font-bold mb-2">🚨 현재 트리거 (3σ 이상)</h3><div id="triggerList" class="space-y-2 text-xs"></div><div class="mt-4"><h4 class="font-bold text-xs mb-1">📈 D램 + 구리 실시간 차트</h4><canvas id="chart" height="200"></canvas></div></div>
 </div>
 
@@ -60,7 +60,7 @@ Z-Score: 3.5σ (1년평균 $28)
 영향: 005930 삼성전자, 000660 SK하이닉스
 액션: BUY Kelly 12%
 예상: 5일 +4.0% 승률 66%
-링크: 대시보드 v8.1
+링크: 대시보드 v8.2
 시간: 2026-10-07 23:00 KST</pre>
 </div>
 </div>
@@ -91,7 +91,7 @@ async function testTG(){
   const token = document.getElementById('tgToken').value || localStorage.getItem('umbrella_tg_token');
   const chatId = document.getElementById('tgChatId').value || localStorage.getItem('umbrella_tg_chatid');
   if(!token || !chatId){ alert('토큰과 Chat ID 먼저 저장'); return; }
-  const msg = `🚨 [UMBRELLA TEST v8.2] D램 현물가 $57.86 Z 3.5 TRIGGER\n영향: 005930, 000660 BUY Kelly 12%\n예상 5일 +4.0% 승률 66%\n시간: ${new Date().toLocaleString('ko-KR')}\n대시보드: v8.1 Real Data Engine`;
+  const msg = `🚨 [UMBRELLA TEST v8.2] D램 현물가 $57.86 Z 3.5 TRIGGER\n영향: 005930, 000660 BUY Kelly 12%\n예상 5일 +4.0% 승률 66%\n시간: ${new Date().toLocaleString('ko-KR')}\n대시보드: v8.2 Real Data Engine`;
   try{
     const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
@@ -134,7 +134,7 @@ setTimeout(loadTG, 500);
 <div><b>FRED (무료, 키 필요없음 proxy):</b><br>DXY via DTWEXBGS, 10년물 DGS10, 원유 재고 via API<br>Endpoint: fred.stlouisfed.org/graph/fredgraph.csv?id=DXY</div>
 <div><b>LME / TrendForce:</b><br>구리: metalcharts.org, LME API<br>D램: memoryindex.io, DRAMeXchange<br>CoWoS: TrendForce, TSMC IR<br>신조선가: Clarkson via Clarksons.net</div>
 </div>
-<div class="mt-3 text-[11px]"><b>다음 스캔 봇:</b> ID 01a11074-e780-74f6-9585-9d8310d73b37 | 4시간마다 | v7 최적화 35개 | 다음 23:00 KST | 알림 [UMBRELLA TRIGGER GLOBAL v7 35]</div>
+<div class="mt-3 text-[11px]"><b>다음 스캔 봇:</b> ID 01a11074-e780-74f6-9585-9d8310d73b37 | 4시간마다 | v7 백테스트 최적화 35개 | 다음 23:00 KST | 알림 [UMBRELLA TRIGGER GLOBAL v8 REAL]</div>
 </div>
 </div>
 
@@ -146,11 +146,41 @@ const realFactors = [
 {id:15, name:'폴란드 국방예산', wave:'정책', current:'$35B 확정', avg:'$20B', z:3.1, status:'TRIGGER', stocks:'012450,LMT', source:'폴란드 국방부', kelly:'16% S급'},
 {id:25, name:'텍사스 원유 재고', wave:'위기', current:'426.4M 배럴', avg:'431M', z:-0.24, status:'정상', stocks:'XOM', source:'EIA Sep 18', kelly:'9%'},
 {id:8, name:'구리 가격', wave:'원자재', current:'$14,505/t', avg:'$12,947/t YTD', z:1.5, status:'주의 +1.5σ', stocks:'010120,FCX', source:'LME, metalcharts.org', kelly:'8%'},
-{id:10, name:'달러인덱스 DXY', wave:'통화', current:'98.82', avg:'101.5', z:-1.08, status:'정상', stocks:'005930,AAPL', source:'TradingEconomics, Barchart', kelly:'6% OFF 대상'},
 {id:14, name:'D램 현물가', wave:'경기', current:'$57.86 DDR5 16Gb', avg:'$28', z:3.5, status:'TRIGGER 초강세', stocks:'005930,000660', source:'DRAMeXchange, memoryindex.io', kelly:'12%'},
 {id:21, name:'칠레 구리 파업', wave:'원자재', current:'정상', avg:'정상', z:0.2, status:'정상', stocks:'FCX', source:'칠레 광산 뉴스', kelly:'15% S급'},
 {id:39, name:'비트코인 반감기', wave:'기술', current:'영향 지속', avg:'-', z:2.8, status:'S급 유지', stocks:'NVDA', source:'BTC halving 2024-04', kelly:'20% S급 최고'},
 ];
+
+// 백테스트 C급 OFF 5개(DXY, 10년물, CPI, 커피/대두, 팜유) 제외 → 실연동 9 + 미연동 26 = 35
+const pendingFactors = [
+{id:7, name:'네온가스/실리콘', wave:'기술', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'005930,000660', source:'-', kelly:'25%'},
+{id:28, name:'CHIPS 반도체법', wave:'정책', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'NVDA', source:'-', kelly:'25%'},
+{id:26, name:'미 국방예산안', wave:'정책', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'LMT', source:'-', kelly:'25%'},
+{id:13, name:'LNG선 운임', wave:'경기', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'009540', source:'-', kelly:'25%'},
+{id:2, name:'대만 가뭄 저수율', wave:'기술', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'005930,000660', source:'-', kelly:'25%'},
+{id:34, name:'블랙프라이데이', wave:'시즈널', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'AMZN,259960', source:'-', kelly:'25%'},
+{id:36, name:'네바다 리튬 허가', wave:'원자재', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'FCX', source:'-', kelly:'25%'},
+{id:6, name:'리튬 가격', wave:'원자재', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'005490,FCX', source:'-', kelly:'25%'},
+{id:12, name:'Clarkson 신조선가', wave:'경기', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'009540', source:'-', kelly:'25%'},
+{id:22, name:'칠레 리튬 가뭄', wave:'원자재', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'AAPL,FCX', source:'-', kelly:'25%'},
+{id:16, name:'중국 전력난', wave:'정책', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'010120,005490', source:'-', kelly:'25%'},
+{id:33, name:'AWS 클라우드', wave:'시즈널', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'AMZN', source:'-', kelly:'25%'},
+{id:27, name:'IRA 보조금', wave:'정책', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'FCX', source:'-', kelly:'25%'},
+{id:37, name:'LNG 터미널 가동', wave:'위기', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'XOM', source:'-', kelly:'25%'},
+{id:5, name:'후판 가격', wave:'원자재', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'009540', source:'-', kelly:'25%'},
+{id:19, name:'ISM 제조업', wave:'경기', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'000660,CAT', source:'-', kelly:'25%'},
+{id:40, name:'전기차 판매', wave:'원자재', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'FCX', source:'-', kelly:'25%'},
+{id:38, name:'항만 노조 파업', wave:'위기', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'AAPL,AMZN', source:'-', kelly:'25%'},
+{id:1, name:'브라질 미나스 강수량', wave:'원자재', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'005930,009540', source:'-', kelly:'24%'},
+{id:32, name:'아이폰 판매', wave:'경기', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'AAPL,000660', source:'-', kelly:'24%'},
+{id:23, name:'미시시피강 수위', wave:'경기', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'CAT', source:'-', kelly:'20%'},
+{id:9, name:'철광석 가격', wave:'원자재', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'005490', source:'-', kelly:'18%'},
+{id:29, name:'대중국 관세', wave:'정책', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'AAPL', source:'-', kelly:'10%'},
+{id:4, name:'파나마 운하 수위', wave:'위기', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'011200,005380,AMZN', source:'-', kelly:'11%'},
+{id:35, name:'중서부 가뭄', wave:'경기', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'CAT', source:'-', kelly:'11%'},
+{id:11, name:'원/달러', wave:'통화', current:'미연동', avg:'-', z:null, status:'데이터 미연동', stocks:'005930,000660', source:'-', kelly:'6%'}
+];
+const allFactors = realFactors.concat(pendingFactors);
 
 function render(){
   const tb = document.getElementById('realTable');
@@ -158,14 +188,15 @@ function render(){
   tb.innerHTML=''; triggerDiv.innerHTML='';
   const top = document.getElementById('topCards'); top.innerHTML='';
   
+  const chronic = realFactors.filter(f=>f.status.includes('만성'));
   const triggers = realFactors.filter(f=>f.status.includes('TRIGGER'));
   
   // Top cards
   const cards = [
-    {label:'실시간 트리거', value: triggers.length + '/35', color:'text-red-400', sub:'3σ 이상'},
+    {label:'실시간 트리거', value: triggers.length + '/35', color:'text-red-400', sub:'3σ 이상 + 만성 '+chronic.length+' | 실연동 '+realFactors.length+'/35'},
     {label:'D램 현물가', value:'$57.86', color:'text-yellow-400', sub:'Z 3.5 TRIGGER'},
     {label:'구리', value:'$14,505', color:'text-orange-400', sub:'Z 1.5 주의'},
-    {label:'DXY', value:'98.82', color:'text-blue-400', sub:'Z -1.08 정상'},
+    {label:'DXY (참고)', value:'98.82', color:'text-blue-400', sub:'백테스트 C급 OFF · 스캔 제외'},
     {label:'CoWoS', value:'100%', color:'text-purple-400', sub:'만성 병목 S급'},
   ];
   cards.forEach(c=>{
@@ -174,17 +205,17 @@ function render(){
     top.appendChild(d);
   });
 
-  realFactors.forEach(f=>{
+  allFactors.forEach(f=>{
     const tr=document.createElement('tr');
     tr.className=(f.status.includes('TRIGGER')?'trigger ':'normal ') + ' border-b border-gray-800';
-    tr.innerHTML=`<td class="p-1 text-center">${f.id}</td><td class="p-1">${f.name}</td><td class="p-1 font-bold">${f.current}</td><td class="p-1">${f.avg}</td><td class="p-1 ${Math.abs(f.z)>=3?'text-red-400 font-bold':Math.abs(f.z)>=1.5?'text-yellow-400':''}">${f.z}σ</td><td class="p-1">${f.status}</td><td class="p-1 text-[10px]">${f.stocks} Kelly ${f.kelly}</td>`;
+    tr.innerHTML=`<td class="p-1 text-center">${f.id}</td><td class="p-1">${f.name}</td><td class="p-1 font-bold">${f.current}</td><td class="p-1">${f.avg}</td><td class="p-1 ${(f.z!==null&&Math.abs(f.z)>=3)?'text-red-400 font-bold':(f.z!==null&&Math.abs(f.z)>=1.5)?'text-yellow-400':''}">${f.z===null?'-':f.z+'σ'}</td><td class="p-1">${f.status}</td><td class="p-1 text-[10px]">${f.stocks} Kelly ${f.kelly}</td>`;
     tb.appendChild(tr);
   });
 
   triggers.forEach(f=>{
     const div=document.createElement('div');
     div.className='p-2 rounded bg-red-900/30 border border-red-700';
-    div.innerHTML=`<b class="text-red-400">🚨 ${f.name} ${f.z}σ TRIGGER</b><br>현재: ${f.current} | 평균: ${f.avg} | 출처: ${f.source}<br>영향: ${f.stocks} | Kelly ${f.kelly} | 액션: BUY<br>예상 5일: +${f.wave==='기술'?'5.5':'4.2'}% 승률 ${f.name.includes('CoWoS')?'81%':'68%'}%`;
+    div.innerHTML=`<b class="text-red-400">🚨 ${f.name} ${f.z}σ TRIGGER</b><br>현재: ${f.current} | 평균: ${f.avg} | 출처: ${f.source}<br>영향: ${f.stocks} | Kelly ${f.kelly} | 액션: BUY<br>예상 5일: +${f.wave==='기술'?'5.5':'4.2'}% 승률 ${f.name.includes('CoWoS')?'81':'68'}%`;
     triggerDiv.appendChild(div);
   });
 
@@ -193,7 +224,7 @@ function render(){
   }
 
   document.getElementById('lastUpdate').innerText = '마지막 갱신: ' + new Date().toLocaleString('ko-KR');
-  document.getElementById('status').innerText = '상태: 실시간 ' + realFactors.length + '개 팩터 갱신 완료';
+  document.getElementById('status').innerText = '상태: 실연동 ' + realFactors.length + '/35 팩터 표시 (나머지 ' + pendingFactors.length + '개 API 미연동)';
 }
 
 async function fetchAll(){
@@ -205,7 +236,7 @@ async function fetchAll(){
     // In real deployment, this would fetch.
     await new Promise(r=>setTimeout(r, 1500));
     render();
-    document.getElementById('status').innerText = '상태: ✅ 실시간 갱신 완료 (DXY 98.82, 구리 14505, D램 57.86, 원유 426.4M)';
+    document.getElementById('status').innerText = '상태: ✅ 갱신 완료 (샘플 데이터: 구리 14505, D램 57.86, 원유 426.4M) — 실제 API 미연동';
   }catch(e){
     document.getElementById('status').innerText = '상태: ❌ API 오류, 캐시 데이터 표시';
     render();
