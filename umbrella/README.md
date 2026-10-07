@@ -17,7 +17,7 @@
 - `UMBRELLA-V8-2-Bots.csv` — 스캔/리포트/알람 봇 스케줄
 
 ## 현재 한계
-- 35개 중 LIVE는 3개뿐이고 나머지는 샘플 또는 `데이터 미연동`입니다.
+- 35개 중 실데이터 LIVE 3개 + 프록시 2개(D램, AI서버)이고 나머지는 샘플 또는 `데이터 미연동`입니다.
 
 ## 실데이터 연동 (v8.2)
 - `fetch-data.mjs` (Node 18+, 의존성 없음): Yahoo Finance·FRED에서 수집해 1년 평균/표준편차로 Z-Score 계산 → `data/factors.json`
@@ -31,5 +31,13 @@
 - `notify.mjs`: `fetch-data.mjs` 실행 끝에 호출됩니다. **새로 TRIGGER가 된 LIVE 팩터만** 발송하고, 해제 전까지 재발송하지 않습니다 (`data/alert-state.json`). 발송 실패는 다음 스캔에서 재시도합니다.
 - 설정: 저장소 Settings → Secrets and variables → Actions에 `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` 등록. 토큰은 코드/로그/커밋에 남지 않습니다.
 - 로컬 테스트: `TELEGRAM_BOT_TOKEN=... TELEGRAM_CHAT_ID=... node umbrella/fetch-data.mjs` (토큰이 없으면 메시지만 출력하고 보내지 않음)
-- 샘플 값(D램, AI서버 등)은 알림 대상이 아닙니다. LIVE 팩터가 늘어나면 자동으로 포함됩니다.
+- 샘플 값은 알림 대상이 아닙니다. 프록시(D램·AI서버)는 기본 제외입니다 (아래 참고).
 - 대시보드의 토큰 입력칸은 브라우저 테스트용이며 4시간 스캔과는 별개입니다.
+
+## D램·AI서버 프록시 연동 (🟡)
+D램 현물가(DRAMeXchange)와 AI서버 발주(Dell/Supermicro 실적)는 무료 공개 API가 없어 **관련 종목 바스켓을 프록시**로 씁니다.
+- D램(14): MU + SK하이닉스(000660.KS) + 삼성전자(005930.KS) 균등가중 지수 (1년 전=100)
+- AI서버(31): NVDA + SMCI + DELL 균등가중 지수
+- Z-Score는 1년 평균/표준편차 기준. 현물가·발주량이 아니라 **주가 모멘텀**이라 원 팩터의 백테스트 통계(승률 66%/79%)는 이 프록시에 그대로 적용되지 않습니다.
+- 대시보드에는 🟡로 표시되고, **텔레그램 알림은 기본 제외**입니다. 포함하려면 `UMBRELLA_ALERT_PROXY=1`을 설정하세요.
+- 수집 실패 시 기존 샘플 값으로 폴백합니다. 진짜 현물가가 필요하면 TrendForce/DRAMeXchange 유료 데이터 또는 별도 소스가 필요합니다.

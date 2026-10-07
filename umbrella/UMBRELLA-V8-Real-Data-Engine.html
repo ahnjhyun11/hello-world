@@ -23,7 +23,7 @@
 <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6" id="topCards"></div>
 
 <div class="grid md:grid-cols-2 gap-4 mb-6">
-<div class="card p-3 rounded"><h3 class="font-bold mb-2">📡 팩터 35개 Z-Score (🟢 = 실데이터)</h3><div class="overflow-auto max-h-[50vh]"><table class="w-full text-[11px]"><thead class="sticky top-0 bg-gray-900"><tr><th>No</th><th>팩터명</th><th>현재값 (Real)</th><th>1년평균</th><th>Z-Score</th><th>상태</th><th>영향</th></tr></thead><tbody id="realTable"></tbody></table></div></div>
+<div class="card p-3 rounded"><h3 class="font-bold mb-2">📡 팩터 35개 Z-Score (🟢 실데이터 · 🟡 프록시)</h3><div class="overflow-auto max-h-[50vh]"><table class="w-full text-[11px]"><thead class="sticky top-0 bg-gray-900"><tr><th>No</th><th>팩터명</th><th>현재값 (Real)</th><th>1년평균</th><th>Z-Score</th><th>상태</th><th>영향</th></tr></thead><tbody id="realTable"></tbody></table></div></div>
 <div class="card p-3 rounded"><h3 class="font-bold mb-2">🚨 현재 트리거 (3σ 이상)</h3><div id="triggerList" class="space-y-2 text-xs"></div><div class="mt-4"><h4 class="font-bold text-xs mb-1">📈 D램 + 구리 실시간 차트</h4><canvas id="chart" height="200"></canvas></div></div>
 </div>
 
@@ -188,10 +188,10 @@ async function loadLive(){
   const res = await fetch('data/factors.json?t=' + Date.now(), {cache:'no-store'});
   if(!res.ok) throw new Error('data/factors.json HTTP ' + res.status);
   const d = await res.json();
-  allFactors.forEach(f=>{ delete f.live; });
+  allFactors.forEach(f=>{ delete f.live; delete f.proxy; });
   Object.entries(d.factors||{}).forEach(([id,v])=>{
     const f = allFactors.find(x=>x.id===+id);
-    if(f) Object.assign(f, {current:v.current, avg:v.avg, z:v.z, status:v.status, source:v.source, live:true});
+    if(f) Object.assign(f, {current:v.current, avg:v.avg, z:v.z, status:v.status, source:v.source, live:true, proxy:!!v.proxy});
   });
   liveRef = d.ref||{};
   return d;
@@ -208,9 +208,10 @@ function render(){
   
   // Top cards
   const cu = allFactors.find(f=>f.id===8);
+  const dr = allFactors.find(f=>f.id===14);
   const cards = [
-    {label:'실시간 트리거', value: triggers.length + '/35', color:'text-red-400', sub:'3σ 이상 + 만성 '+chronic.length+' | LIVE '+allFactors.filter(f=>f.live).length+'/35'},
-    {label:'D램 현물가', value:'$57.86', color:'text-yellow-400', sub:'Z 3.5 TRIGGER'},
+    {label:'실시간 트리거', value: triggers.length + '/35', color:'text-red-400', sub:'3σ 이상 + 만성 '+chronic.length+' | LIVE '+allFactors.filter(f=>f.live&&!f.proxy).length+' + 프록시 '+allFactors.filter(f=>f.proxy).length+' /35'},
+    {label: dr.proxy ? 'D램 (프록시)' : 'D램 현물가', value: dr.proxy ? dr.current.replace('메모리 바스켓 ','지수 ') : '$57.86', color:'text-yellow-400', sub:'Z '+dr.z+' '+dr.status+(dr.proxy?' · 🟡 프록시':' · 샘플')},
     {label:'구리', value: cu.live ? cu.current.replace('/t','') : '$14,505', color:'text-orange-400', sub:'Z '+cu.z+' '+cu.status+(cu.live?' · LIVE':' · 샘플')},
     {label:'DXY (참고)', value: liveRef.dxy ? liveRef.dxy.value : '98.82', color:'text-blue-400', sub:'백테스트 C급 OFF · 스캔 제외' + (liveRef.dxy ? ' · LIVE' : ' · 샘플')},
     {label:'CoWoS', value:'100%', color:'text-purple-400', sub:'만성 병목 S급'},
@@ -224,7 +225,7 @@ function render(){
   allFactors.forEach(f=>{
     const tr=document.createElement('tr');
     tr.className=(f.status.includes('TRIGGER')?'trigger ':'normal ') + ' border-b border-gray-800';
-    tr.innerHTML=`<td class="p-1 text-center">${f.id}</td><td class="p-1">${f.name}</td><td class="p-1 font-bold">${f.current}</td><td class="p-1">${f.avg}</td><td class="p-1 ${(f.z!==null&&Math.abs(f.z)>=3)?'text-red-400 font-bold':(f.z!==null&&Math.abs(f.z)>=1.5)?'text-yellow-400':''}">${f.z===null?'-':f.z+'σ'}</td><td class="p-1">${f.live?'🟢 ':''}${f.status}</td><td class="p-1 text-[10px]">${f.stocks} Kelly ${f.kelly}</td>`;
+    tr.innerHTML=`<td class="p-1 text-center">${f.id}</td><td class="p-1">${f.name}</td><td class="p-1 font-bold">${f.current}</td><td class="p-1">${f.avg}</td><td class="p-1 ${(f.z!==null&&Math.abs(f.z)>=3)?'text-red-400 font-bold':(f.z!==null&&Math.abs(f.z)>=1.5)?'text-yellow-400':''}">${f.z===null?'-':f.z+'σ'}</td><td class="p-1">${f.live?(f.proxy?'🟡 ':'🟢 '):''}${f.status}</td><td class="p-1 text-[10px]">${f.stocks} Kelly ${f.kelly}</td>`;
     tb.appendChild(tr);
   });
 
@@ -250,7 +251,7 @@ async function fetchAll(){
     const d = await loadLive();
     render();
     const n = allFactors.filter(f=>f.live).length;
-    st.innerText = '상태: ✅ LIVE ' + n + '/35 갱신 (' + new Date(d.updated).toLocaleString('ko-KR') + ')' + (d.errors&&d.errors.length ? ' · 수집 실패 ' + d.errors.length + '건' : '');
+    st.innerText = '상태: ✅ LIVE ' + n + '/35 갱신 (프록시 ' + allFactors.filter(f=>f.proxy).length + ' 포함, ' + new Date(d.updated).toLocaleString('ko-KR') + ')' + (d.errors&&d.errors.length ? ' · 수집 실패 ' + d.errors.length + '건' : '');
   }catch(e){
     render();
     st.innerText = '상태: ⚠️ 실데이터 없음 → 샘플 표시 (' + e.message + '). node umbrella/fetch-data.mjs 실행 후 서버로 열어주세요';

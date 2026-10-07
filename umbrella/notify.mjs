@@ -1,6 +1,6 @@
 // 텔레그램 알림 (Node 18+). 토큰은 환경변수/GitHub Secrets로만 받고 저장·출력하지 않는다.
 //   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
-// 새로 TRIGGER가 된 LIVE 팩터만 보낸다. 이미 TRIGGER였던 팩터는 해제될 때까지 재발송하지 않는다
+// 새로 TRIGGER가 된 LIVE 팩터만 보낸다. 프록시 팩터(D램·AI서버)는 UMBRELLA_ALERT_PROXY=1일 때만 보낸다. 이미 TRIGGER였던 팩터는 해제될 때까지 재발송하지 않는다
 // (상태: data/alert-state.json).
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -30,12 +30,12 @@ export function loadBacktest(path = join(DIR, 'UMBRELLA-V7-Backtest-40.csv')) {
 }
 
 // prev: 지난 상태 {id: 'TRIGGER'|'OK'}, out: collect() 결과 → {alerts, next}
-export function pickAlerts(prev, out, meta) {
+export function pickAlerts(prev, out, meta, alertProxy = false) {
   const alerts = [], next = {};
   for (const [id, f] of Object.entries(out.factors)) {
     const on = f.status === 'TRIGGER';
     next[id] = on ? 'TRIGGER' : 'OK';
-    if (on && prev[id] !== 'TRIGGER' && meta[id]) alerts.push({ id: +id, ...f, ...meta[id] });
+    if (on && prev[id] !== 'TRIGGER' && meta[id] && (!f.proxy || alertProxy)) alerts.push({ id: +id, ...f, ...meta[id] });
   }
   // 이번에 수집 실패한 팩터는 이전 상태 유지 (실패 때문에 재발송되는 것 방지)
   for (const id of Object.keys(prev)) if (!(id in next)) next[id] = prev[id];
@@ -45,7 +45,7 @@ export function pickAlerts(prev, out, meta) {
 export function buildMessage(a, when = new Date()) {
   return [
     '🚨 [UMBRELLA TRIGGER v8 REAL]',
-    `팩터: ${a.name} ${a.current}`,
+    `팩터: ${a.name} ${a.current}${a.proxy ? ' ※프록시 지표(백테스트 통계는 원 팩터 기준)' : ''}`,
     `Z-Score: ${a.z}σ (평균 ${a.avg})`,
     `출처: ${a.source}`,
     `영향: ${a.stocks}`,
@@ -66,7 +66,7 @@ export async function sendTelegram(token, chatId, text, fetchFn = fetch) {
 export async function notify(out, { fetchFn = fetch, env = process.env, dir = DIR } = {}) {
   const statePath = join(dir, 'data', 'alert-state.json');
   const prev = existsSync(statePath) ? JSON.parse(readFileSync(statePath, 'utf8')) : {};
-  const { alerts, next } = pickAlerts(prev, out, loadBacktest(join(dir, 'UMBRELLA-V7-Backtest-40.csv')));
+  const { alerts, next } = pickAlerts(prev, out, loadBacktest(join(dir, 'UMBRELLA-V7-Backtest-40.csv')), env.UMBRELLA_ALERT_PROXY === '1');
   const token = env.TELEGRAM_BOT_TOKEN, chat = env.TELEGRAM_CHAT_ID;
   if (!token || !chat) {
     alerts.forEach(a => console.log('[DRY-RUN, 토큰 없음]\n' + buildMessage(a)));

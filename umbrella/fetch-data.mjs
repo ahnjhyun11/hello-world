@@ -37,6 +37,15 @@ export async function fredValues(id, n = 52, fetchFn = fetch) {
   return vals.slice(-n);
 }
 
+// 무료 공개 API가 없는 팩터(D램 현물가, AI서버 발주)는 관련 종목 바스켓을 프록시로 쓴다.
+// 1년 전=100으로 정규화한 균등가중 지수의 Z-Score. 거래소 휴장일이 달라 최근 N일 기준으로 맞춘다.
+export async function basketIndex(symbols, fetchFn = fetch) {
+  const all = await Promise.all(symbols.map(s => yahooCloses(s, fetchFn)));
+  const n = Math.min(...all.map(a => a.length));
+  const norm = all.map(a => a.slice(-n).map(x => (x / a[a.length - n]) * 100));
+  return Array.from({ length: n }, (_, i) => mean(norm.map(a => a[i])));
+}
+
 const entry = (series, fmt, avgFmt, source) => {
   const z = zscore(series);
   return { current: fmt(series[series.length - 1]), avg: avgFmt(mean(series)), z: +z.toFixed(2), status: statusOf(z), source };
@@ -51,6 +60,14 @@ const jobs = {
   11: async f => {  // 원/달러
     const s = await yahooCloses('KRW=X', f);
     return entry(s, v => `${Math.round(v).toLocaleString('en-US')}원`, v => `${Math.round(v).toLocaleString('en-US')}원 1Y`, 'Yahoo Finance KRW=X');
+  },
+  14: async f => {  // D램 현물가 → 메모리 바스켓 프록시 (MU, SK하이닉스, 삼성전자)
+    const s = await basketIndex(['MU', '000660.KS', '005930.KS'], f);
+    return { ...entry(s, v => `메모리 바스켓 ${v.toFixed(0)}`, v => `${v.toFixed(0)} 1Y`, 'Yahoo MU+000660.KS+005930.KS (프록시)'), proxy: true };
+  },
+  31: async f => {  // AI서버 발주 → AI서버 바스켓 프록시 (NVDA, SMCI, DELL)
+    const s = await basketIndex(['NVDA', 'SMCI', 'DELL'], f);
+    return { ...entry(s, v => `AI서버 바스켓 ${v.toFixed(0)}`, v => `${v.toFixed(0)} 1Y`, 'Yahoo NVDA+SMCI+DELL (프록시)'), proxy: true };
   },
   25: async f => {  // 미국 원유 재고 (FRED WCESTUS1, 천 배럴)
     const s = (await fredValues('WCESTUS1', 52, f)).map(x => x / 1000);
